@@ -27,11 +27,12 @@ namespace _3PT
         public MainWindow()
         {
             InitializeComponent();
-            ReverseTBA.DetourWs2Send();
+            Reversion.DetourWs2Send();
         }
     }
-    public class ReverseTBA : NativeMethods
+    public class Reversion : NativeMethods
     {
+        const int MAX_BUFF = 8192;
         //From send to -19
         private static readonly byte[] jmpToCallDetour = 
         {
@@ -61,9 +62,12 @@ namespace _3PT
                 Debug.WriteLine("Module not found");
                 return;
             }
-            
+
+            //Address to store detoured info. [0] for length of buffer, [1::] for buffer content.
+            int memPool = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, MAX_BUFF, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+
             //The address where the detour work happens
-            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, 0x20, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, (uint)callDetour.Length, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
             byte[] detourAddrArr = BitConverter.GetBytes(detourAddr);
 
             //Patching the calling function, for the detour, with the detour address
@@ -93,9 +97,7 @@ namespace _3PT
             for (int i = 0; i < pMods.Count; i++)
             {
                 if (pMods[i].ModuleName.Contains(modName))
-                {
                     return i;
-                }
             }
             return -1;
         }
