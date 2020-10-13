@@ -40,14 +40,20 @@ namespace _3PT
         //From -19 to detour
         private static readonly byte[] callDetour =
         {
-            0xb8, 0x00,0x00,0x00,0x00,                      //mov eax, 0x0
+            0xb8, 0x00, 0x00, 0x00, 0x00,                   //mov eax, 0x0 ;address of detour
             0xff, 0xe0                                      //jmp eax
         };
 
+        //ToDo: Write replaced bytes from jmpToCallDetour
         private static readonly byte[] detour =
         {
-
-            0x80, 0x38, 0x00,                               //cmp byte ptr [eax], 0x0
+            0xb8, 0x00,0x00, 0x00, 0x00,                    //mov eax, 0x0  ;address of storage
+            //mov ecx, [ebp+10] ;length
+            //mov [eax+1], ecx
+            //mov ecx, [ebp+c] ;buffer -- pointer so second RPM for this
+            //mov [eax+2], ecx
+            
+            0x80, 0x38, 0x01,                               //cmp byte ptr [eax], 0x1
             0x75, 0xfb,                                     //jne -3;
         };
 
@@ -62,13 +68,22 @@ namespace _3PT
                 return;
             }
             
-            //The address where the detour work happens
-            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, 0x20, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+            //The address of the detour
+            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, (uint)detour.Length, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
             byte[] detourAddrArr = BitConverter.GetBytes(detourAddr);
 
-            //Patching the calling function, for the detour, with the detour address
+            //The address of the memory storage
+            int storageAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, 0xFF, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+            byte[] storageAddrArr = BitConverter.GetBytes(storageAddr);
+            
+            //Patching the detour calling function with the detour address
             for (int i = 1; i < callDetour.Length-2; i++)
                 callDetour[i] = detourAddrArr[i - 1];
+
+
+            //Patching the detour function with the storage address
+            for (int i = 1; i <= 4; i++)
+                detour[i] = storageAddrArr[i - 1];
             
 
             //Detouring the send function to the detour calling function
@@ -86,7 +101,34 @@ namespace _3PT
                 return;
             };
 
+            //Writing the detour
+            if(!Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)detourAddr, detour, detour.Length, out IntPtr _))
+            {
+                Debug.WriteLine(Marshal.GetLastWin32Error());
+                return;
+            }
 
+            //poc loop -- make thread
+            while(true)
+            {
+                byte[] data = new byte[255];
+
+                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, 0x1, out _))
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                };
+                if (data[0] == 0)
+                {
+                    SocketData sd = new SocketData();
+                    //Read mem and report
+                }
+            }
+
+        }
+        public struct SocketData
+        {
+            public byte[] buffer;
+            public int length;
         }
         public static int GetModuleIndex(ProcessModuleCollection pMods, string modName)
         {
