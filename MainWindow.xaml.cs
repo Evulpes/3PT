@@ -47,13 +47,20 @@ namespace _3PT
         //ToDo: Write replaced bytes from jmpToCallDetour
         private static readonly byte[] detour =
         {
-            0xb8, 0x00,0x00, 0x00, 0x00,                    //mov eax, 0x0  ;address of storage
-            //mov ecx, [ebp+10] ;length
-            //mov [eax+1], ecx
-            //mov ecx, [ebp+c] ;buffer -- pointer so second RPM for this
-            //mov [eax+2], ecx
-            
-            0x80, 0x38, 0x01,                               //cmp byte ptr [eax], 0x1
+            0xb8, 0x00,0x00, 0x00, 0x00,                    //mov eax, 0x0          ;address of storage
+
+            #region BorrowedFlow
+            0x53,                                           //push ebx
+            0x56,                                           //push esi
+            #endregion
+            0x8b, 0x4d, 0x10,                               //mov ecx, [ebp+0x10]   ;length
+            0x89, 0x48, 0x01,                               //mov [eax+1], ecx
+            0x8b, 0x4d, 0x0c,                               //mov ecx, [ebp+0xc]    ;buffer*
+            0x8b, 0x09,                                     //mov ecx, [ecx]
+            0x89, 0x48, 0x02,                               //mov [eax+2], ecx
+
+            0xc6, 0x00, 0x01,                               //mov byte ptr [eax], 0x1
+            0x80, 0x38, 0x00,                               //cmp byte ptr [eax], 0x0
             0x75, 0xfb,                                     //jne -3;
         };
 
@@ -113,13 +120,21 @@ namespace _3PT
             {
                 byte[] data = new byte[255];
 
-                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, 0x1, out _))
-                {
+                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, 0xFF, out _))
                     Debug.WriteLine(Marshal.GetLastWin32Error());
-                };
-                if (data[0] == 0)
+
+
+                if (data[0] == 1)
                 {
-                    SocketData sd = new SocketData();
+                    //Memoryapi.ReadProcessMemory(p.Handle)
+                    SocketData sd = new SocketData()
+                    {
+                        length = data[1],
+                        buffer = new byte[data[1]],
+                    };
+                    Array.Copy(data, 2, sd.buffer, 0, data[1]);
+                    sd.buffer = sd.buffer.Reverse().ToArray();
+
                     //Read mem and report
                 }
             }
@@ -127,6 +142,7 @@ namespace _3PT
         }
         public struct SocketData
         {
+            public byte[] bufferCont;
             public byte[] buffer;
             public int length;
         }
