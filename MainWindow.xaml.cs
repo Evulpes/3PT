@@ -27,100 +27,119 @@ namespace _3PT
         public MainWindow()
         {
             InitializeComponent();
-            ReverseTBA.DetourWs2Send();
+            Detours.DetourWs2Send();
+           
         }
     }
-    public class ReverseTBA : NativeMethods
+    public class Detours : NativeMethods
     {
-        //From send to -19
-        private static readonly byte[] jmpToCallDetour = 
+        private class W32Send
         {
-            0xeb, 0xeb,                                     //jmp -19;
-        };
-        //From -19 to detour
-        private static readonly byte[] callDetour =
-        {
-            0xb8, 0x00, 0x00, 0x00, 0x00,                   //mov eax, 0x0 ;address of detour
-            0xff, 0xe0                                      //jmp eax
-        };
+            //From send to -19
+            internal static readonly byte[] jmpToCallDetour =
+            {
+                0xeb, 0xeb,                                     //jmp -19;
+            };
+            //From -19 to detour
+            internal static readonly byte[] callDetour =
+            {
+                0xb8, 0x00, 0x00, 0x00, 0x00,                   //mov eax, 0x0 ;address of detour
+                0xff, 0xe0                                      //jmp eax
+            };
+            internal static readonly int CALLDETOUR_START_OF_MOV_INSTRUCTION = 1;
+            internal static readonly int CALLDETOUR_END_OF_MOV_INSTRUCTION = callDetour.Length - 2;
 
-        //ToDo: Write replaced bytes from jmpToCallDetour
-        private static readonly byte[] detour =
-        {
-            0xb8, 0x00,0x00, 0x00, 0x00,                    //mov eax, 0x0          ;address of storage
+            internal static readonly byte[] detourWork =
+            {
+                0xb8, 0x00,0x00, 0x00, 0x00,                    //mov eax, 0x0          ;address of storage
+                #region BorrowedFlow
+                0x53,                                           //push ebx
+                0x56,                                           //push esi
+                #endregion
+                0x8b, 0x4d, 0x10,                               //mov ecx, [ebp+0x10]   ;length
+                0x89, 0x48, 0x01,                               //mov [eax+1], ecx
+                0x8b, 0x4d, 0x0c,                               //mov ecx, [ebp+0xc]    ;buffer*
+                0x89, 0x48, 0x02,                               //mov [eax+2], ecx
 
-            #region BorrowedFlow
-            0x53,                                           //push ebx
-            0x56,                                           //push esi
-            #endregion
-            0x8b, 0x4d, 0x10,                               //mov ecx, [ebp+0x10]   ;length
-            0x89, 0x48, 0x01,                               //mov [eax+1], ecx
-            0x8b, 0x4d, 0x0c,                               //mov ecx, [ebp+0xc]    ;buffer*
-            0x8b, 0x09,                                     //mov ecx, [ecx]
-            0x89, 0x48, 0x02,                               //mov [eax+2], ecx
+                0xc6, 0x00, 0x01,                               //mov byte ptr [eax], 0x1
+                0x80, 0x38, 0x00,                               //cmp byte ptr [eax], 0x0
+                0x75, 0xfb,                                     //jne -3;
+                0xba, 0x00,0x00, 0x00, 0x00,                    //mov edx, 0x0
+                0xff, 0xe2                                      //jmp edx
+            };
+            internal static readonly int DETOUR_START_OF_MOV_EAX_INSTRUCTION = 1;
+            internal static readonly int DETOUR_END_OF_MOV_EAX_INSTRUCTION = 4;
+            internal static readonly int DETOUR_START_OF_MOV_EDX_INSTRUCTION = detourWork.Length - 6;
+            internal static readonly int DETOUR_END_OF_MOV_EDX_INSTRUCTION = detourWork.Length - 2;
+        }
 
-            0xc6, 0x00, 0x01,                               //mov byte ptr [eax], 0x1
-            0x80, 0x38, 0x00,                               //cmp byte ptr [eax], 0x0
-            0x75, 0xfb,                                     //jne -3;
-        };
-
+       
         public static void DetourWs2Send()
         {
+            
             Process p = Process.GetProcessesByName("3CXWin8Phone").FirstOrDefault();
 
             int mIndex = GetModuleIndex(p.Modules, "WS2_32");
-            if(mIndex == -1)
+            if (mIndex == -1)
             {
                 Debug.WriteLine("Module not found");
                 return;
             }
-            
+
             //The address of the detour
-            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, (uint)detour.Length, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+            int detourAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, (uint)W32Send.detourWork.Length, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
             byte[] detourAddrArr = BitConverter.GetBytes(detourAddr);
 
             //The address of the memory storage
-            int storageAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, 0xFF, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
+            int storageAddr = (int)Memoryapi.VirtualAllocEx(p.Handle, IntPtr.Zero, 8192, Winnt.AllocationType.MEM_COMMIT, Winnt.MemoryProtection.PAGE_EXECUTE_READWRITE);
             byte[] storageAddrArr = BitConverter.GetBytes(storageAddr);
-            
-            //Patching the detour calling function with the detour address
-            for (int i = 1; i < callDetour.Length-2; i++)
-                callDetour[i] = detourAddrArr[i - 1];
+
+            //Patching the detour-calling function with the detour address
+            for (int i = 1; i < W32Send.CALLDETOUR_END_OF_MOV_INSTRUCTION; i++)
+                W32Send.callDetour[i] = detourAddrArr[i - 1];
 
 
             //Patching the detour function with the storage address
-            for (int i = 1; i <= 4; i++)
-                detour[i] = storageAddrArr[i - 1];
-            
+            for (int i = W32Send.DETOUR_START_OF_MOV_EAX_INSTRUCTION; i <= W32Send.DETOUR_END_OF_MOV_EAX_INSTRUCTION; i++)
+                W32Send.detourWork[i] = storageAddrArr[i - 1];
+
+            //Patching the detour function with the return address
+            byte[] returnAddr = BitConverter.GetBytes((int)p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc2 + 0xA);
+            int x = 0;
+            for (int i = W32Send.DETOUR_START_OF_MOV_EDX_INSTRUCTION; i < W32Send.DETOUR_END_OF_MOV_EDX_INSTRUCTION; i++, x++)
+            {
+                W32Send.detourWork[i] = returnAddr[x];
+            };
+
 
             //Detouring the send function to the detour calling function
             IntPtr jmpToDetourAddr = p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc2 + 0x8;
-            if (!Memoryapi.WriteProcessMemory(p.Handle, jmpToDetourAddr, jmpToCallDetour, jmpToCallDetour.Length, out IntPtr _))
+            if (!Memoryapi.WriteProcessMemory(p.Handle, jmpToDetourAddr, W32Send.jmpToCallDetour, W32Send.jmpToCallDetour.Length, out IntPtr _))
             {
                 Debug.WriteLine(Marshal.GetLastWin32Error());
                 return;
             };
 
             //Writing the detour call
-            if (!Memoryapi.WriteProcessMemory(p.Handle, (jmpToDetourAddr - 19), callDetour, callDetour.Length, out IntPtr _))
+            if (!Memoryapi.WriteProcessMemory(p.Handle, (jmpToDetourAddr - 19), W32Send.callDetour, W32Send.callDetour.Length, out IntPtr _))
             {
                 Debug.WriteLine(Marshal.GetLastWin32Error());
                 return;
             };
 
             //Writing the detour
-            if(!Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)detourAddr, detour, detour.Length, out IntPtr _))
+            if (!Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)detourAddr, W32Send.detourWork, W32Send.detourWork.Length, out IntPtr _))
             {
                 Debug.WriteLine(Marshal.GetLastWin32Error());
                 return;
             }
 
-            //poc loop -- make thread
-            while(true)
+            //poc loop -- make and return a running thread
+            while (true)
             {
                 byte[] data = new byte[255];
 
-                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, 0xFF, out _))
+                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, 8192, out _))
                     Debug.WriteLine(Marshal.GetLastWin32Error());
 
 
@@ -130,20 +149,22 @@ namespace _3PT
                     SocketData sd = new SocketData()
                     {
                         length = data[1],
-                        buffer = new byte[data[1]],
+                        bufferPtr = new byte[data[1]],
                     };
-                    Array.Copy(data, 2, sd.buffer, 0, data[1]);
-                    sd.buffer = sd.buffer.Reverse().ToArray();
-
-                    //Read mem and report
+                    //4 bytes as 32-bit, ptr only 4 bytes max
+                    Array.Copy(data, 2, sd.bufferPtr, 0, 4);
+                    //if (Memoryapi.ReadProcessMemory(p.Handle, ))
+                    //Read from buff ptr and report
                 }
             }
 
         }
+        
+
         public struct SocketData
         {
             public byte[] bufferCont;
-            public byte[] buffer;
+            public byte[] bufferPtr;
             public int length;
         }
         public static int GetModuleIndex(ProcessModuleCollection pMods, string modName)
