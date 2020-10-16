@@ -153,7 +153,11 @@ namespace _3PT
                     };
                     //4 bytes as 32-bit, ptr only 4 bytes max
                     Array.Copy(data, 2, sd.bufferPtr, 0, 4);
-                    //if (Memoryapi.ReadProcessMemory(p.Handle, ))
+                    int bufferPtrAddr = BitConverter.ToInt32(sd.bufferPtr, 0);
+                    if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)bufferPtrAddr, sd.bufferCont, sd.length, out IntPtr _)) 
+                        Debug.WriteLine(Marshal.GetLastWin32Error());
+
+
                     //Read from buff ptr and report
                 }
             }
