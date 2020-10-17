@@ -149,7 +149,7 @@ namespace _3PT
             //poc loop -- make and return a running thread
             while (true)
             {
-                byte[] data = new byte[255];
+                byte[] data = new byte[W32Send.OUR_PAGE_SIZE];
 
                 if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, W32Send.OUR_PAGE_SIZE, out _))
                     Debug.WriteLine(Marshal.GetLastWin32Error());
