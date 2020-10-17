@@ -172,7 +172,11 @@ namespace _3PT
                         Debug.Write(Marshal.GetLastWin32Error());
 
 
-      
+                    Trace.Write($"Socket Length {sd.length}\n");
+                    Trace.Write($"Socket Payload {Encoding.ASCII.GetString(sd.bufferCont)}\n");
+                    Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
+
+
                 }
             }
 
