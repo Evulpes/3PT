@@ -59,6 +59,9 @@ namespace _3PT
                 0x8b, 0x4d, 0x10,                               //mov ecx, [ebp+0x10]   ;length
                 0x89, 0x48, 0x01,                               //mov [eax+1], ecx
                 0x8b, 0x4d, 0x0c,                               //mov ecx, [ebp+0xc]    ;buffer*
+                //test region
+                0x8b, 0x09,                                     //mov [ecx], ecx
+                //
                 0x89, 0x48, 0x02,                               //mov [eax+2], ecx
 
                 0xc6, 0x00, 0x01,                               //mov byte ptr [eax], 0x1
@@ -104,16 +107,14 @@ namespace _3PT
                 W32Send.detourWork[i] = storageAddrArr[i - 1];
 
             //Patching the detour function with the return address
-            byte[] returnAddr = BitConverter.GetBytes((int)p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc2 + 0xA);
+            byte[] returnAddr = BitConverter.GetBytes((int)p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc + 0xA);
             int x = 0;
             for (int i = W32Send.DETOUR_START_OF_MOV_EDX_INSTRUCTION; i < W32Send.DETOUR_END_OF_MOV_EDX_INSTRUCTION; i++, x++)
-            {
                 W32Send.detourWork[i] = returnAddr[x];
-            };
 
 
             //Detouring the send function to the detour calling function
-            IntPtr jmpToDetourAddr = p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc2 + 0x8;
+            IntPtr jmpToDetourAddr = p.Modules[mIndex].BaseAddress + (int)Offsets.sendFunc + 0x8;
             if (!Memoryapi.WriteProcessMemory(p.Handle, jmpToDetourAddr, W32Send.jmpToCallDetour, W32Send.jmpToCallDetour.Length, out IntPtr _))
             {
                 Debug.WriteLine(Marshal.GetLastWin32Error());
@@ -153,9 +154,10 @@ namespace _3PT
                     };
                     //4 bytes as 32-bit, ptr only 4 bytes max
                     Array.Copy(data, 2, sd.bufferPtr, 0, 4);
-                    int bufferPtrAddr = BitConverter.ToInt32(sd.bufferPtr, 0);
-                    if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)bufferPtrAddr, sd.bufferCont, sd.length, out IntPtr _)) 
-                        Debug.WriteLine(Marshal.GetLastWin32Error());
+
+                    /*To do:
+                     * Create asm loop to enumerate buff ptr data and store to [eax+3].
+                     */
 
 
                     //Read from buff ptr and report
@@ -185,8 +187,8 @@ namespace _3PT
         public enum Offsets
         {
             logFunc = 0xF030,       //3cxTunnel.dll
-            sendFunc = 0x5750,      //Add Byte Scanning
-            sendFunc2 = 0x14CF0,    //Add Byte Scanning
+            sendFunc = 0x5750,      //Add Byte Scanning -- PC
+            sendFunc2 = 0x14CF0,    //Add Byte Scanning -- laptop
         }
     }
     public class NativeMethods
