@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:_3PT"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <Brush x:Key="3PTHeaderColour">#404040</Brush>
     </Application.Resources>
 </Application>

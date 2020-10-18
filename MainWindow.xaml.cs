@@ -12,8 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Runtime.InteropServices;
-using System.Diagnostics;
+using System.Data;
 
 
 
@@ -27,9 +26,13 @@ namespace _3PT
         public MainWindow()
         {
             InitializeComponent();
-            Detours.DetourWs2Send();
-           
+            Task detourSend = Detours.DetourWs2Send();
+            detourSend.Start();
+            PacketDataGrid.DataContext = Detours.packetTable.DefaultView;
+            int me = 5;
+
         }
+
     }
 
 }

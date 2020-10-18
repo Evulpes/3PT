@@ -5,9 +5,20 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Data;
+using System.Windows.Threading;
+using _3PT;
+using System.Windows;
 
 public class Detours : NativeMethods
 {
+    public static DataTable packetTable = new DataTable
+    {
+        Columns =
+        {
+            "Method", "Length", "Buffer"
+        }
+    };
     private class W32Send
     {
         //From send to -19
@@ -56,14 +67,13 @@ public class Detours : NativeMethods
             internal static readonly int DETOUR_END_OF_MOV_EDX_INSTRUCTION = assembly.Length - 2;
 
         }
-
         internal static readonly int OUR_PAGE_SIZE = 0x1000;
     }
 
 
     public static Task DetourWs2Send()
     {
-       
+
         Process p = Process.GetProcessesByName("3CXWin8Phone").FirstOrDefault();
 
         int mIndex = GetModuleIndex(p.Modules, "WS2_32");
@@ -81,7 +91,7 @@ public class Detours : NativeMethods
         IntPtr sendFunc = Libloaderapi.GetProcAddress(hWinsock, "send");
         if (sendFunc == IntPtr.Zero)
             return null;
-        
+
         int funcOffset = (int)sendFunc - (int)hWinsock;
         Libloaderapi.FreeLibrary(hWinsock);
 
@@ -134,52 +144,61 @@ public class Detours : NativeMethods
             return null;
         }
 
-        Task DetourTask = new Task (() => 
-        {
-            while (true)
-            {
-                byte[] data = new byte[W32Send.OUR_PAGE_SIZE];
+        Task DetourTask = new Task(() =>
+       {
+           while (true)
+           {
+               byte[] data = new byte[W32Send.OUR_PAGE_SIZE];
 
-                if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, W32Send.OUR_PAGE_SIZE, out _))
-                    Debug.WriteLine(Marshal.GetLastWin32Error());
+               if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)storageAddr, data, W32Send.OUR_PAGE_SIZE, out _))
+                   Debug.WriteLine(Marshal.GetLastWin32Error());
 
-
+                //IF the byte is signalled
                 if (data[0] == 1)
-                {
+               {
                     //Memoryapi.ReadProcessMemory(p.Handle)
                     SocketData sd = new SocketData()
                     {
-                        length = data[1],
-                        bufferPtr = new byte[4],
-                        bufferCont = new byte[data[1]],
+                       length = data[1],
+                       bufferPtr = new byte[4],
+                       bufferCont = new byte[data[1]],
                     };
                     //4 bytes as 32-bit, ptr only 4 bytes max
                     Array.Copy(data, 2, sd.bufferPtr, 0, sizeof(int));
                     int bufferPtrAddr = BitConverter.ToInt32(sd.bufferPtr, 0);
-                    IntPtr buffTest = (IntPtr)bufferPtrAddr;
-                    if (!Memoryapi.ReadProcessMemory(p.Handle, buffTest, sd.bufferCont, sd.length, out IntPtr _))
+                    if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)bufferPtrAddr, sd.bufferCont, sd.length, out IntPtr _))
                         Debug.Write(Marshal.GetLastWin32Error());
 
-
+#if DEBUG
                     Trace.Write($"Socket Length {sd.length}\n");
                     Trace.Write($"Socket Payload {Encoding.ASCII.GetString(sd.bufferCont, 0, sd.length)}\n"); //Debug uses ascii so messages will be omitted
                     Trace.Write("\n");
-                    Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
-                }
-            }
-        });
-        DetourTask.Start();
+#endif
+                   //USE THE CORRECT CODE HERE, UPDATE IT.
+                   Application.Current.Dispatcher.Invoke(() =>
+                   {
+                       packetTable.Rows.Add("ws32_32.send",sd.length, BitConverter.ToString(sd.bufferCont));
+                   });
+
+
+
+
+
+                   Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
+               }
+           }
+       });
         return DetourTask;
     }
 
 
-    public struct SocketData
+    private struct SocketData
     {
         public byte[] bufferCont;
         public byte[] bufferPtr;
         public int length;
     }
-    public static int GetModuleIndex(ProcessModuleCollection pMods, string modName)
+    private static int GetModuleIndex(ProcessModuleCollection pMods, string modName)
     {
         for (int i = 0; i < pMods.Count; i++)
         {
@@ -191,17 +210,16 @@ public class Detours : NativeMethods
     public enum Offsets
     {
         logFunc = 0xF030,       //3cxTunnel.dll
-        sendFunc2 = 0x14CF0,    //Add Byte Scanning -- laptop
     }
 }
 public class NativeMethods
 {
-    public static class Handleapi
+    protected static class Handleapi
     {
         [DllImport("kernel32.dll")]
         public static extern bool CloseHandle(IntPtr hObject);
     }
-    public static class Libloaderapi
+    protected static class Libloaderapi
     {
         [DllImport("Kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
         public static extern IntPtr LoadLibraryA([MarshalAs(UnmanagedType.LPStr)]string lpFileName);
@@ -212,7 +230,7 @@ public class NativeMethods
         [DllImport("Kernel32", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true)]
         public static extern IntPtr GetProcAddress(IntPtr hModule, string lpprocName);
     }
-    public static class Memoryapi
+    protected static class Memoryapi
     {
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
@@ -224,7 +242,7 @@ public class NativeMethods
         public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out IntPtr lpNumberOfBytesWritten);
 
     }
-    public static class Processthreadsapi
+    protected static class Processthreadsapi
     {
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
@@ -232,7 +250,7 @@ public class NativeMethods
         [DllImport("Kernel32", SetLastError = true)]
         public static extern IntPtr OpenProcess(Winnt.ProcessAccessFlags dwDesiredAccess, bool bInheritHandle, int processId);
     }
-    public static class Winnt
+    protected static class Winnt
     {
         public enum AllocationType
         {
