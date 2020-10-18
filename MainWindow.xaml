@@ -5,13 +5,24 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:_3PT"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" WindowStyle="None">
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="50" CornerRadius="0" ResizeBorderThickness="5"/>
+        <WindowChrome CaptionHeight="0" GlassFrameThickness="0"  CornerRadius="0" ResizeBorderThickness="5" NonClientFrameEdges="None" />
     </WindowChrome.WindowChrome>
 
+
     <Grid>
-        <DataGrid Name="PacketDataGrid" AutoGenerateColumns="True" HorizontalAlignment="Left" Height="326" ItemsSource="{Binding}" Margin="10,50,0,0" VerticalAlignment="Top" Width="772"/>
-        <Rectangle x:Name="_Header" Fill="{StaticResource 3PTHeaderColour}" Height="50" VerticalAlignment="Top"/>
+        <Rectangle x:Name="Header" Fill="{StaticResource 3PTHeaderColour}" Height="50" VerticalAlignment="Top" MouseDown="Header_MouseDown"/>
+        <Image x:Name="_3PTLogo" Margin="5,5,0,0" Stretch="Fill" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Left" Width="92" Height="37" VerticalAlignment="Top"/>
+        <Button Content="Button" HorizontalAlignment="Left" Margin="695,10,0,0" VerticalAlignment="Top" Width="75"/>
+        <Image Margin="5,5,0,0" Source="3ptlogo.png" Stretch="Fill" Height="38" VerticalAlignment="Top" HorizontalAlignment="Left" Width="92"/>
+        <TabControl HorizontalAlignment="Left" Height="365" Margin="10,55,0,0" VerticalAlignment="Top" Width="760">
+            <TabItem Header="TabItem">
+                <Grid Background="#FFE5E5E5">
+                    <DataGrid x:Name="PacketDataGrid" AutoGenerateColumns="True" ColumnWidth="*" HorizontalAlignment="Left" Height="326" ItemsSource="{Binding}" VerticalAlignment="Top" Width="772"/>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
     </Grid>
 </Window>

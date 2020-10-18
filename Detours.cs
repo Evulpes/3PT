@@ -16,7 +16,7 @@ public class Detours : NativeMethods
     {
         Columns =
         {
-            "Method", "Length", "Buffer"
+            "Method", "Data", "Length", "Time"
         }
     };
     private class W32Send
@@ -177,7 +177,7 @@ public class Detours : NativeMethods
                    //USE THE CORRECT CODE HERE, UPDATE IT.
                    Application.Current.Dispatcher.Invoke(() =>
                    {
-                       packetTable.Rows.Add("ws32_32.send",sd.length, BitConverter.ToString(sd.bufferCont));
+                       packetTable.Rows.Add("ws32_32.send", BitConverter.ToString(sd.bufferCont), sd.length, "NYI");
                    });
 
 

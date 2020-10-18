@@ -27,12 +27,19 @@ namespace _3PT
         {
             InitializeComponent();
             Task detourSend = Detours.DetourWs2Send();
+            
             detourSend.Start();
             PacketDataGrid.DataContext = Detours.packetTable.DefaultView;
             int me = 5;
 
         }
 
+
+        private void Header_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if(e.ChangedButton == MouseButton.Left)
+                DragMove();
+        }
     }
 
 }
