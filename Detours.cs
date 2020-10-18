@@ -63,7 +63,7 @@ public class Detours : NativeMethods
 
     public static Task DetourWs2Send()
     {
-
+       
         Process p = Process.GetProcessesByName("3CXWin8Phone").FirstOrDefault();
 
         int mIndex = GetModuleIndex(p.Modules, "WS2_32");
@@ -107,8 +107,8 @@ public class Detours : NativeMethods
         //Patching the detour function with the return address
         byte[] returnAddr = BitConverter.GetBytes((int)p.Modules[mIndex].BaseAddress + funcOffset + 0xA);
 
-        int x = 0;
-        for (int i = W32Send.Detour.DETOUR_START_OF_MOV_EDX_INSTRUCTION; i < W32Send.Detour.DETOUR_END_OF_MOV_EDX_INSTRUCTION; i++, x++)
+
+        for (int i = W32Send.Detour.DETOUR_START_OF_MOV_EDX_INSTRUCTION, x = 0; i < W32Send.Detour.DETOUR_END_OF_MOV_EDX_INSTRUCTION; i++, x++)
             W32Send.Detour.assembly[i] = returnAddr[x];
 
 
@@ -162,11 +162,9 @@ public class Detours : NativeMethods
 
 
                     Trace.Write($"Socket Length {sd.length}\n");
-                    Trace.Write($"Socket Payload {Encoding.ASCII.GetString(sd.bufferCont)}\n");
+                    Trace.Write($"Socket Payload {Encoding.ASCII.GetString(sd.bufferCont, 0, sd.length)}\n"); //Debug uses ascii so messages will be omitted
                     Trace.Write("\n");
                     Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
-
-
                 }
             }
         });
