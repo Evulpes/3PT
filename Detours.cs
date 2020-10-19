@@ -54,7 +54,7 @@ public class Detours : NativeMethods
                 0x8b, 0x4d, 0x10,                               //mov ecx, [ebp+0x10]   ;length
                 0x89, 0x48, 0x01,                               //mov [eax+1], ecx      ;this only allows for a max length of 255, as the [eax+2] will overwrite it
                 0x8b, 0x4d, 0x0c,                               //mov ecx, [ebp+0xc]    ;buffer*
-                0x89, 0x48, 0x02,                               //mov [eax+2], ecx
+                0x89, 0x48, 0x05,                               //mov [eax+5], ecx
                 0xc6, 0x00, 0x01,                               //mov byte ptr [eax], 0x1
                 0x80, 0x38, 0x00,                               //cmp byte ptr [eax], 0x0
                 0x75, 0xfb,                                     //jne -3;
@@ -145,7 +145,7 @@ public class Detours : NativeMethods
         }
 
         Task DetourTask = new Task(() =>
-       {
+        {
            while (true)
            {
                byte[] data = new byte[W32Send.OUR_PAGE_SIZE];
@@ -159,12 +159,13 @@ public class Detours : NativeMethods
                     //Memoryapi.ReadProcessMemory(p.Handle)
                     SocketData sd = new SocketData()
                     {
-                       length = data[1],
+                       length = BitConverter.ToInt32(data.Skip(1).Take(4).ToArray(), 0),
                        bufferPtr = new byte[4],
-                       bufferCont = new byte[data[1]],
+                   
                     };
-                    //4 bytes as 32-bit, ptr only 4 bytes max
-                    Array.Copy(data, 2, sd.bufferPtr, 0, sizeof(int));
+                    sd.bufferCont = new byte[sd.length];
+
+                    Array.Copy(data, 5, sd.bufferPtr, 0, sizeof(int));
                     int bufferPtrAddr = BitConverter.ToInt32(sd.bufferPtr, 0);
                     if (!Memoryapi.ReadProcessMemory(p.Handle, (IntPtr)bufferPtrAddr, sd.bufferCont, sd.length, out IntPtr _))
                         Debug.Write(Marshal.GetLastWin32Error());
