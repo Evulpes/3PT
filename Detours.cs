@@ -155,7 +155,7 @@ public class Detours : NativeMethods
 
                 //IF the byte is signalled
                 if (data[0] == 1)
-               {
+                {
                     //Memoryapi.ReadProcessMemory(p.Handle)
                     SocketData sd = new SocketData()
                     {
@@ -186,7 +186,7 @@ public class Detours : NativeMethods
 
 
                    Memoryapi.WriteProcessMemory(p.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
-               }
+                }
            }
        });
         return DetourTask;

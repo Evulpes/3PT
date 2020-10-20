@@ -40,6 +40,11 @@ namespace _3PT
             if(e.ChangedButton == MouseButton.Left)
                 DragMove();
         }
+
+        private void StartStopToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 
 }
