@@ -13,8 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Data;
-
-
+using System.Threading;
 
 namespace _3PT
 {
@@ -23,12 +22,14 @@ namespace _3PT
     /// </summary>
     public partial class MainWindow : Window
     {
+        Task detourSendTask;
         public MainWindow()
         {
             InitializeComponent();
-            Task detourSend = Detours.DetourWs2Send();
-            
-            detourSend.Start();
+            detourSendTask = Detours.DetourWs2Send();
+
+            detourSendTask.Start();
+           
             PacketDataGrid.DataContext = Detours.packetTable.DefaultView;
             int me = 5;
 
@@ -44,6 +45,19 @@ namespace _3PT
         private void StartStopToggleButton_Click(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            Hide();
+            Detours.W32Send.detour = false;
+            Task.WaitAll(detourSendTask);
+            Environment.Exit(0);
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
         }
     }
 

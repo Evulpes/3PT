@@ -14,13 +14,13 @@
     <Grid>
         <Rectangle x:Name="Header" Fill="{StaticResource 3PTHeaderColour}" Height="42" VerticalAlignment="Top" MouseDown="Header_MouseDown"/>
         <Image x:Name="_3PTLogo" Margin="5,5,0,0" Stretch="Fill" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Left" Width="92" Height="37" VerticalAlignment="Top"/>
-        <Button Content="X" HorizontalAlignment="Left" Style="{StaticResource HeaderButtons}" Margin="777,3,0,0"/>
-        <Button Content="─" HorizontalAlignment="Left" Style="{StaticResource HeaderButtons}" Margin="757,3,0,0"/>
+        <Button x:Name="ExitButton" Content="X" HorizontalAlignment="Left" Style="{StaticResource HeaderButtons}" Margin="777,3,0,0" Click="ExitButton_Click"/>
+        <Button x:Name="MinimizeButton" Content="─" HorizontalAlignment="Left" Style="{StaticResource HeaderButtons}" Margin="757,3,0,0" Click="MinimizeButton_Click"/>
         <Image Margin="5,5,0,0" Source="3ptlogo.png" Stretch="Fill" Height="30" VerticalAlignment="Top" HorizontalAlignment="Left" Width="73"/>
         <TabControl HorizontalAlignment="Left"  Height="365" Margin="5,47,0,0" VerticalAlignment="Top" Width="777">
             <TabItem Header="TabItem">
                 <Grid>
-                    <DataGrid x:Name="PacketDataGrid" AutoGenerateColumns="True" ColumnWidth="*" ItemsSource="{Binding}" Margin="0,27,0,11" HorizontalAlignment="Right" Width="771"/>
+                    <DataGrid x:Name="PacketDataGrid" Style="{StaticResource 3PTDataGridStyle}" AutoGenerateColumns="True" ColumnWidth="*" ItemsSource="{Binding}" Margin="0,27,0,11" HorizontalAlignment="Right" Width="771"/>
                     <Button x:Name="StartStopToggleButton" Content="Button" HorizontalAlignment="Left" Margin="0,2,0,0" VerticalAlignment="Top" Width="20" Height="20" Click="StartStopToggleButton_Click"/>
                 </Grid>
             </TabItem>
