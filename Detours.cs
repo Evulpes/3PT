@@ -192,6 +192,8 @@ public class Detours : NativeMethods
 
                     Memoryapi.WriteProcessMemory(W32Send.p3cx.Handle, (IntPtr)storageAddr, new byte[] { 0x0 }, 0x1, out IntPtr _);
                 }
+                //Performance
+                Thread.Sleep(10);
             }
             //Remove the detour
             IntPtr origInstrAddr = W32Send.p3cx.Modules[W32Send.ws2ModIndex].BaseAddress + W32Send.sendOffset + W32Send.JmpToCallDetour.Offset;
